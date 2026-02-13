@@ -62,11 +62,25 @@ def save_weights(dirpath, model, epoch=None, batch=None, ext_text=None):
 
 def load_weights(model, fpath, device='cuda'):
     print("loading weights '{}'".format(fpath))
-    weights = torch.load(fpath, map_location=device)
+    checkpoint = torch.load(fpath, map_location=device)
+    
+    # Extract state_dict if it's wrapped in a dictionary
+    if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+    else:
+        state_dict = checkpoint
 
-    weights['state_dict'] = {k.replace('convnet','layers'): v for k, v in weights['state_dict'].items()}
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        # This handles keys like '0.weight' and turns them into 'layers.0.weight'
+        if k[0].isdigit():
+            new_key = "layers." + k
+        else:
+            new_key = k.replace('convnet', 'layers')
+        
+        new_state_dict[new_key] = v
 
-    model.load_state_dict(weights['state_dict'])
+    model.load_state_dict(new_state_dict)
     return model
 
 
